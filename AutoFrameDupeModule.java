@@ -36,7 +36,7 @@ public class AutoFrameDupeModule extends Module
 
     public AutoFrameDupeModule()
     {
-        super("KillAura", new String[] {"Aura"}, "Automatically faces and hits entities around you", "NONE", 0xFF0000, ModuleType.COMBAT);
+        super("AutoFrameDupe", new String[] {"FrameDupe"}, "Dupe on colisseum.net", "NONE", 0xFF0000, ModuleType.DUPE);
     }
 
     private Entity CurrentTarget;
