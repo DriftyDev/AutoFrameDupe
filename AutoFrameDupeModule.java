@@ -18,6 +18,7 @@ import net.minecraft.network.play.client.CPacketUseEntity;
 public class AutoFrameDupeModule extends Module
 {
     public final Value<Double> Ticks = new Value<Double>("Ticks", new String[] {"Ticks"}, "Tick delay", 10d, 1d, 20d, 1d);
+    public final Value<Double> Limit = new Value<Double>("Limit", new String[] {"Ticks"}, "Tick delay", 10d, 1d, 20d, 1d);
 
     private TickedTimer tickedTimer;
 
@@ -29,6 +30,7 @@ public class AutoFrameDupeModule extends Module
     }
 
     private boolean Sending = false;
+    private int cLimit = 0;
     private Entity entity;
 
     @Override
@@ -36,6 +38,7 @@ public class AutoFrameDupeModule extends Module
     {
         super.onEnable();
         Sending = false;
+        cLimit = 0;
         tickedTimer.start();
     }
 
@@ -57,29 +60,28 @@ public class AutoFrameDupeModule extends Module
     @EventHandler
     private Listener<EventClientTick> OnTick = new Listener<>(p_Event ->
     {
-        if(!tickedTimer.passed(Ticks.getValue().intValue()))
-            return;
+        if(!tickedTimer.passed(Ticks.getValue().intValue())) return;
 
         entity = mc.world.loadedEntityList.stream()
                 .filter(loadedEntity -> isValidTileEntity(loadedEntity))
                 .min(Comparator.comparing(loadedEntity -> mc.player.getDistance(loadedEntity.getPosition().getX(), loadedEntity.getPosition().getY(), loadedEntity.getPosition().getZ())))
                 .orElse(null);
-        EntityItemFrame itemFrame = (EntityItemFrame)entity;
-
-        if(entity == null) {
-            SalHackMod.log.info("No entity found");
-            toggle();
-            return;
+                
+        for(EntityItemFrame entity: mc.world.playerEntities) {
+            if(cLimit <= Limit.getValue().intValue())
+                EntityItemFrame itemFrame = (EntityItemFrame)entity;
+                if(entity == null) {
+                    toggle();
+                    return;
+                }
+                if(mc.player.getHeldItemMainhand() == null || mc.player.getHeldItemMainhand().getItem() == Items.AIR) return;
+                if(Sending && (itemFrame.getDisplayedItem() == null || itemFrame.getDisplayedItem().getItem() == Items.AIR))
+                Sending = false;
+                mc.player.connection.sendPacket(Sending?new CPacketUseEntity(entity):new CPacketUseEntity(entity, EnumHand.MAIN_HAND));
+                Sending = !Sending;
+                tickedTimer.reset();
+                cLimit = cLimit+1;
         }
-
-        if(mc.player.getHeldItemMainhand() == null || mc.player.getHeldItemMainhand().getItem() == Items.AIR)
-            return;
-
-
-        if(Sending && (itemFrame.getDisplayedItem() == null || itemFrame.getDisplayedItem().getItem() == Items.AIR))
-            Sending = false;
-        mc.player.connection.sendPacket(Sending?new CPacketUseEntity(entity):new CPacketUseEntity(entity, EnumHand.MAIN_HAND));
-        Sending = !Sending;
-        tickedTimer.reset();
+        cLimit = 0;
     });
 }
